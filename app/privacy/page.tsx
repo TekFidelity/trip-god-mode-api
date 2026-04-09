@@ -79,7 +79,7 @@ export default function PrivacyPage() {
       </p>
       <p>
         <strong>TekFidelity</strong><br />
-        Email: your-email@example.com
+        Email: bevan_john@hotmail.com
       </p>
     </main>
   )
