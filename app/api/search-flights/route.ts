@@ -73,8 +73,8 @@ export async function GET(req: NextRequest) {
     )
 
     const offerRequest = await duffel.offerRequests.create({
-      slices,
-      passengers,
+      slices: slices as any,
+      passengers: passengers as any,
       cabin_class: cabinClass,
       max_connections: 1,
       return_offers: true
