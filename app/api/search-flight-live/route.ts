@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Duffel } from '@duffel/api'
 
+type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first'
+
 const token = process.env.DUFFEL_ACCESS_TOKEN
 
 const duffel = token ? new Duffel({ token }) : null
 
-type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first'
-
 function isoDurationToMinutes(duration?: string | null): number | null {
   if (!duration) return null
 
-  const match =
-    duration.match(/P(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?/) ||
-    duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/)
+  const hours = duration.match(/(\d+)H/)?.[1]
+  const minutes = duration.match(/(\d+)M/)?.[1]
 
-  if (!match) return null
-
-  const hours = Number(match[1] || 0)
-  const minutes = Number(match[2] || 0)
-  return hours * 60 + minutes
+  return (Number(hours || 0) * 60) + Number(minutes || 0)
 }
 
 export async function GET(req: NextRequest) {
@@ -47,37 +42,32 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const slices: Array<{
-      origin: string
-      destination: string
-      departure_date: string
-    }> = [
+    const slices = [
       {
         origin,
         destination,
-        departure_date: departureDate
-      }
+        departure_date: departureDate,
+      },
+      ...(returnDate
+        ? [
+            {
+              origin: destination,
+              destination: origin,
+              departure_date: returnDate,
+            },
+          ]
+        : []),
     ]
 
-    if (returnDate) {
-      slices.push({
-        origin: destination,
-        destination: origin,
-        departure_date: returnDate
-      })
-    }
-
-    const passengers: Array<{ type: 'adult' }> = Array.from(
-      { length: adults },
-      () => ({ type: 'adult' as const })
-    )
+    const passengers = Array.from({ length: adults }, () => ({
+      type: 'adult' as const,
+    }))
 
     const offerRequest = await duffel.offerRequests.create({
-      slices,
-      passengers,
+      slices: slices as any,
+      passengers: passengers as any,
       cabin_class: cabinClass,
-      max_connections: 1,
-      return_offers: true
+      return_offers: true,
     })
 
     const offers = offerRequest.data.offers ?? []
@@ -104,7 +94,7 @@ export async function GET(req: NextRequest) {
         cabin_class: cabinClass,
         adults,
         booking_url: null,
-        offer_id: offer.id
+        offer_id: offer.id,
       }
     })
 
@@ -113,14 +103,14 @@ export async function GET(req: NextRequest) {
       meta: {
         live_data: true,
         provider: 'duffel',
-        mode: token.startsWith('duffel_test_') ? 'test' : 'live'
-      }
+        mode: token.startsWith('duffel_test_') ? 'test' : 'live',
+      },
     })
   } catch (error) {
     return NextResponse.json(
       {
         error: 'Duffel search failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
